@@ -88,7 +88,7 @@ df <- within(df, embargo[embargo == 'NoData' & status == "gold"] <- 'Compliant')
 df <- within(df, embargo[embargo == 'NoData' & status == "diamond"] <- 'Compliant')
 ```
 
-Summarise and get totals.
+Summarise and get total pubs by subject.
 
 ```{r}
 df2 <- df %>% 
