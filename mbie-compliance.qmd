@@ -1,8 +1,8 @@
 ---
 title: "MBIE Compliance"
 author: "Tom Saunders"
-format: gfm
-editor: visual
+format: html
+editor: source
 out-width: "70%"
 fig-align: center
 ---
