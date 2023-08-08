@@ -1,12 +1,31 @@
+---
+title: "MBIE Compliance"
+author: "Tom Saunders"
+format: gfm
+editor: visual
+out-width: "70%"
+fig-align: center
+---
+
+```{r}
+#| include: false
 library(tidyverse)
 library(forcats)
 library(purrr)
+```
 
-df <- read_csv("data/conzul-data-raw.csv")
-wos <- read_csv("data/wos-subjects.csv")
+Read in CONZUL data and a list of subject categories used by Web of Science.
 
-# Select & rename columns
+```{r}
+#| message: false
+#| warning: false
+df <- read_csv("data_raw/conzul-data-raw.csv")
+wos <- read_csv("data_raw/wos-subjects.csv")
+```
 
+Select & rename columns, filter to outputs published in 2021.
+
+```{r}
 df <- df %>% 
   select(doi = 1, 
          status = 4, 
@@ -24,17 +43,23 @@ df <- df %>%
          mbie = 58,
          hrc = 59) %>% 
   filter(year == "2021")
+```
 
-# Collapse subjects to their most basic level
+Merge 'subjects' into higher-level categories.
 
+```{r}
 df$subject <- gsub(";.*","",df$subject)
 
 colnames(wos) <- c("Arts & Humanities", "Life Sciences & Medicine", 
                    "Physical Sciences & Mathematics", 
                    "Social Sciences", "Technology & Engineering")
+```
 
-# Rename subject factors to wos categories
+Rename subject factors to categories used by Web of Science.
 
+```{r}
+#| message: false
+#| warning: false
 new_ids <- map(wos, ~ .x[!is.na(.x)])
 
 df$subject <- fct_collapse(df$subject, !!!new_ids)
@@ -46,9 +71,11 @@ df$subject <- recode(df$subject,
                      `Social Sciences - Other Topics` = 'Social Sciences')
 
 df$subject <- fct_explicit_na(df$subject, "Unknown")
+```
 
-# Rename embargo factors
+Rename categories within the 'embargo' column.
 
+```{r}
 df$embargo <- fct_explicit_na(df$embargo, "NoData")
 
 df$embargo <- fct_collapse(df$embargo, 
@@ -57,13 +84,13 @@ df$embargo <- fct_collapse(df$embargo,
 
 df$embargo <- factor(df$embargo, levels = c('NotCompliant', 'NoData', 'Compliant'))
 
-# Replace gold/diamond 'embargo' with 'compliant'
-
 df <- within(df, embargo[embargo == 'NoData' & status == "gold"] <- 'Compliant')
 df <- within(df, embargo[embargo == 'NoData' & status == "diamond"] <- 'Compliant')
+```
 
-# Summarise
+Summarise and get totals.
 
+```{r}
 df2 <- df %>% 
   group_by(subject) %>%
   count(embargo) %>% 
@@ -71,23 +98,23 @@ df2 <- df %>%
     pct = n / sum(n) * 100,
   )
 
-# For bar total text
-
 totals <- df %>% 
   group_by(subject) %>% 
   summarise(
     total = n(),
   )
+```
 
-# Plot compliance by discipline
+Plot compliance by discipline.
 
+```{r}
 ggplot(df2, aes(x = subject, y = pct, fill = embargo)) +
   geom_bar(position = "fill", stat = "identity") +
   coord_flip() +
   theme_classic() +
   scale_fill_manual(values=c("red", "black","darkgreen")) +
   scale_y_continuous(labels = scales::percent) +
-  ggtitle("Incoming MBIE policy compliance for 2021 publications by NZ university-affiliated researchers") +
+  ggtitle("Compliance of 2021 NZ university-affiliated publications") +
   xlab("Subject Area") +
   ylab("") +
   labs(fill = "Embargo") +
@@ -97,9 +124,4 @@ ggplot(df2, aes(x = subject, y = pct, fill = embargo)) +
                               "Life Sciences & Medicine")) +
   geom_text(aes(subject, 1.05, label = total, fill = NULL), data = totals) +
   theme(plot.title = element_text(hjust = 0.5))
-
-ggsave("compliance-discipline.png", width = 10, height = 6)
-
-
-
-
+```
